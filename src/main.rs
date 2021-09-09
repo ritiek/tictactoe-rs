@@ -1,12 +1,11 @@
-use std::fmt;
+// use std::fmt;
 use std::io;
 use std::io::{stdout, Write};
+use std::{thread, time};
 
-use crossterm::{
-    cursor, event, execute,
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
-    terminal, ExecutableCommand,
-};
+use crossterm::event::{read, Event};
+use crossterm::style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor};
+use crossterm::{cursor, event, execute, terminal, ExecutableCommand};
 
 // trait Error: fmt::Debug + fmt::Display {}
 
@@ -20,8 +19,8 @@ struct Side(u16);
 
 #[derive(Debug)]
 struct Coordinates {
-    x: u16,
-    y: u16,
+    x: i16,
+    y: i16,
 }
 
 //0123456789
@@ -40,15 +39,45 @@ struct Coordinates {
 #[derive(Debug)]
 struct Grid {
     side: Side,
+}
+
+#[derive(Debug)]
+enum Player {
+    Zero,
+    Cross,
+}
+
+#[derive(Debug)]
+// Marked this as non-exhaustive because it's possible to have variants for diagonal
+// movements.
+#[non_exhaustive]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+    // UpLeft,
+    // UpRight,
+    // DownLeft,
+    // DownRight,
+}
+
+enum InputEvent {
+    Direction,
+    Mark,
+    Quit,
+}
+
+struct TicTacToe {
+    grid: Grid,
     marked_positions: Vec<Coordinates>,
 }
 
 impl Grid {
     fn new(side: Side) -> Self {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
-        Grid {
+        Self {
             side: side,
-            marked_positions: vec![],
         }
     }
 
@@ -81,6 +110,53 @@ impl Grid {
         Ok(self)
     }
 
+    fn grid_coords_to_screen_coords(position: &Coordinates) -> Coordinates {
+        Coordinates {
+            x: position.x * 4 + 1,
+            y: position.y,
+        }
+    }
+}
+
+impl Default for Grid {
+    fn default() -> Self {
+        Self {
+            side: Side(3),
+        }
+    }
+}
+
+// impl fmt::Display for Grid {
+//     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+//         Ok(())
+//     }
+// }
+
+// impl Error for Grid {}
+
+impl Direction {
+    fn get_coordinates(&self) -> Coordinates {
+        match &self {
+            Direction::Up => Coordinates { x: 0, y: 1 },
+            Direction::Down => Coordinates { x: 0, y: -1 },
+            Direction::Left => Coordinates { x: -1, y: 0 },
+            Direction::Right => Coordinates { x: 1, y: 0 },
+            _ => panic!("Diagonal movement is not yet implemented!")
+        }
+    }
+}
+
+impl TicTacToe {
+    fn from(grid: Grid) -> Self {
+        Self {
+            grid: grid,
+            marked_positions: vec![],
+        }
+    }
+
+    fn handle_player_input(&mut self) {
+    }
+
     fn mark_cross_at(mut self, position: Coordinates) -> io::Result<Self> {
         // fn mark_cross(mut self, position: Coordinates) -> Result<Self, Box<dyn Error>> {
         self.mark_at(position, 'X')
@@ -93,9 +169,9 @@ impl Grid {
 
     fn mark_at(mut self, position: Coordinates, marker: char) -> io::Result<Self> {
         // fn mark(mut self, position: Coordinates, marker: char) -> Result<Self, Box<dyn Error>> {
-        let Side(side) = &self.side;
+        let Side(side) = &self.grid.side;
         let position = {
-            if side >= &position.x && side >= &position.y {
+            if side >= &(position.x as u16) && side >= &(position.y as u16) {
                 Ok(position)
             } else {
                 Err(io::Error::new(
@@ -104,37 +180,41 @@ impl Grid {
                 ))
             }
         }?;
+        let screen_coords = Grid::grid_coords_to_screen_coords(&position);
         self.marked_positions.push(position);
+        execute!(
+            stdout(),
+            cursor::MoveTo(screen_coords.x as u16, screen_coords.y as u16),
+            SetForegroundColor(Color::Red),
+            SetBackgroundColor(Color::White),
+            Print(marker),
+            ResetColor
+        )?;
+        // FIXME: below is for testing only
+        execute!(
+            stdout(),
+            cursor::MoveTo(10, 10),
+            SetForegroundColor(Color::Red),
+            SetBackgroundColor(Color::White),
+            Print(marker),
+            ResetColor
+        )?;
         Ok(self)
     }
 
-    fn grid_coords_to_screen_coords(position: Coordinates) -> Coordinates {
-        Coordinates {
-            x: position.x * 4 + 2,
-            y: position.y,
-        }
+    fn check_for_victory() -> Option<Player> {
+        // TODO
+        Some(Player::Zero)
     }
 }
-
-impl Default for Grid {
-    fn default() -> Self {
-        Self {
-            side: Side(3),
-            marked_positions: vec![],
-        }
-    }
-}
-
-impl fmt::Display for Grid {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        Ok(())
-    }
-}
-
-// impl Error for Grid {}
 
 fn main() -> crossterm::Result<()> {
     let mut grid: Grid = Default::default();
     grid.draw();
+    // let two_s = time::Duration::from_secs(2);
+    // thread::sleep(two_s);
+    // grid.mark_cross_at(Coordinates { x: 1, y: 0 });
+    let mut game = TicTacToe::from(grid);
+    // game.handle_player_input();
     Ok(())
 }
