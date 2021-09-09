@@ -152,7 +152,7 @@ impl TicTacToe {
 
     fn handle_player_input(&mut self) -> crossterm::Result<()> {
         loop {
-            if let Event::Key(k) = read().unwrap() {
+            if let Event::Key(k) = read()? {
                 let key = match k.code {
                     event::KeyCode::Enter => Some(InputEvent::Mark),
                     event::KeyCode::Char('w') => Some(InputEvent::Direction(Direction::Up)),
