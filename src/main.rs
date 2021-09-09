@@ -1,7 +1,7 @@
 // use std::fmt;
 use std::io;
 use std::io::{stdout, Write};
-use std::{thread, time};
+// use std::{thread, time};
 
 use crossterm::event::{read, Event};
 use crossterm::style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor};
@@ -63,7 +63,7 @@ enum Direction {
 }
 
 enum InputEvent {
-    Direction,
+    Direction(Direction),
     Mark,
     Quit,
 }
@@ -76,9 +76,7 @@ struct TicTacToe {
 impl Grid {
     fn new(side: Side) -> Self {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
-        Self {
-            side: side,
-        }
+        Self { side: side }
     }
 
     fn draw(&mut self) -> crossterm::Result<&mut Self> {
@@ -120,9 +118,7 @@ impl Grid {
 
 impl Default for Grid {
     fn default() -> Self {
-        Self {
-            side: Side(3),
-        }
+        Self { side: Side(3) }
     }
 }
 
@@ -135,13 +131,13 @@ impl Default for Grid {
 // impl Error for Grid {}
 
 impl Direction {
-    fn get_coordinates(&self) -> Coordinates {
+    fn get_relative_coordinates(&self) -> Coordinates {
         match &self {
             Direction::Up => Coordinates { x: 0, y: 1 },
             Direction::Down => Coordinates { x: 0, y: -1 },
             Direction::Left => Coordinates { x: -1, y: 0 },
             Direction::Right => Coordinates { x: 1, y: 0 },
-            _ => panic!("Diagonal movement is not yet implemented!")
+            _ => panic!("Diagonal movement is not yet implemented!"),
         }
     }
 }
@@ -154,7 +150,21 @@ impl TicTacToe {
         }
     }
 
-    fn handle_player_input(&mut self) {
+    fn handle_player_input(&mut self) -> crossterm::Result<()> {
+        loop {
+            if let Event::Key(k) = read().unwrap() {
+                let key = match k.code {
+                    event::KeyCode::Enter => Some(InputEvent::Mark),
+                    event::KeyCode::Char('w') => Some(InputEvent::Direction(Direction::Up)),
+                    event::KeyCode::Char('s') => Some(InputEvent::Direction(Direction::Down)),
+                    event::KeyCode::Char('a') => Some(InputEvent::Direction(Direction::Left)),
+                    event::KeyCode::Char('d') => Some(InputEvent::Direction(Direction::Right)),
+                    event::KeyCode::Esc => Some(InputEvent::Quit),
+                    _ => None,
+                };
+            };
+        }
+        Ok(())
     }
 
     fn mark_cross_at(mut self, position: Coordinates) -> io::Result<Self> {
@@ -176,7 +186,7 @@ impl TicTacToe {
             } else {
                 Err(io::Error::new(
                     io::ErrorKind::Other,
-                    "position coordinates are out of bounds",
+                    "position coordinates are out of bounds from the grid area",
                 ))
             }
         }?;
@@ -215,6 +225,6 @@ fn main() -> crossterm::Result<()> {
     // thread::sleep(two_s);
     // grid.mark_cross_at(Coordinates { x: 1, y: 0 });
     let mut game = TicTacToe::from(grid);
-    // game.handle_player_input();
+    game.handle_player_input();
     Ok(())
 }
