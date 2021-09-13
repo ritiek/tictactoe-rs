@@ -54,7 +54,7 @@ struct Grid {
     side: Side,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Player {
     Zero,
     Cross,
@@ -94,7 +94,7 @@ struct TicTacToe {
     cursor: Coordinates,
     grid: Grid,
     // marked_positions: Vec<Coordinates>,
-    marked_positions: HashMap<Coordinates, Option<Player>>,
+    marked_positions: HashMap<Coordinates, Player>,
 }
 
 impl Grid {
@@ -192,16 +192,11 @@ impl Direction {
 
 impl TicTacToe {
     fn from(grid: Grid) -> Self {
-        let initial_grid_coords = Coordinates { x: 0, y: 0};
+        let initial_grid_coords = Coordinates { x: 0, y: 0 };
         Self::move_cursor_to_grid(&initial_grid_coords);
         let Side(side) = grid.side;
-        let mut marked_positions: HashMap<Coordinates, Option<Player>> = HashMap::new();
+        let mut marked_positions: HashMap<Coordinates, Player> = HashMap::new();
         marked_positions.reserve(side.pow(2).into());
-        for x in 0..side as i16 {
-            for y in 0..side as i16 {
-                marked_positions.insert(Coordinates { x, y }, None);
-            }
-        }
         Self {
             cursor: initial_grid_coords,
             grid: grid,
@@ -288,6 +283,16 @@ impl TicTacToe {
 
     fn mark(&mut self, player: Player) -> io::Result<&Self> {
         self.grid.mark_at(self.cursor, player.to_char())?;
+        self.marked_positions.insert(self.cursor, player);
+        let player_has_won = self.check_for_victory(&player);
+        if player_has_won {
+            println!("Winner: {:?}", player);
+        }
+        let game_has_drawed = !self.grid_has_empty_boxes();
+        if game_has_drawed {
+            println!("Draw!");
+        }
+
         Ok(self)
     }
 
@@ -299,9 +304,64 @@ impl TicTacToe {
         Ok(self.mark(Player::Zero)?)
     }
 
-    fn check_for_victory() -> Option<Player> {
-        // TODO
-        Some(Player::Zero)
+    fn grid_has_empty_boxes(&self) -> bool {
+        let Side(side) = self.grid.side;
+        self.marked_positions.len() != side.pow(2).into()
+    }
+
+    fn check_for_victory(&self, player: &Player) -> bool {
+        let Side(side) = self.grid.side;
+        let mut victory = true;
+
+        for x in 0..(side as i16) {
+            victory = true;
+            for y in 0..(side as i16) {
+                if self.marked_positions.get(&Coordinates { x, y }) != Some(player) {
+                    victory = false;
+                    break;
+                }
+            }
+            if victory {
+                return true;
+            }
+        }
+
+        for y in 0..(side as i16) {
+            victory = true;
+            for x in 0..(side as i16) {
+                if self.marked_positions.get(&Coordinates { x, y }) != Some(player) {
+                    victory = false;
+                    break;
+                }
+            }
+            if victory {
+                return true;
+            }
+        }
+
+        for z in 0..(side as i16) {
+            victory = true;
+            if self.marked_positions.get(&Coordinates { x: z, y: z }) != Some(player) {
+                victory = false;
+                break;
+            }
+        }
+        if victory {
+            return true;
+        }
+
+        for z in 0..(side as i16) {
+            victory = true;
+            if self.marked_positions.get(&Coordinates { x: z, y: z }) != Some(player) {
+                victory = false;
+                break;
+            }
+        }
+        if victory {
+            return true;
+        }
+
+        false
     }
 }
 
