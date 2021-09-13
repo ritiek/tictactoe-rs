@@ -1,9 +1,12 @@
 // use std::fmt;
+use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Write};
 use std::ops;
-use std::collections::HashMap;
+use std::fmt;
 // use std::{thread, time};
+
+use rand::seq::SliceRandom;
 
 use crossterm::event::{read, Event};
 use crossterm::style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor};
@@ -35,6 +38,20 @@ impl ops::Add<Coordinates> for Coordinates {
         }
     }
 }
+
+// struct MarkerError;
+
+// impl fmt::Display for MarkerError {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "The position has already been marked or is out of bounds from the grid.")
+//     }
+// }
+
+// impl fmt::Debug for MarkerError {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "{{ file: {}, line: {} }}", file!(), line!())
+//     }
+// }
 
 //0123456789
 //.0...1...2.
@@ -90,10 +107,56 @@ enum InputEvent {
     Quit,
 }
 
+#[derive(Debug)]
+#[non_exhaustive]
+enum AI {
+    Random,
+    MiniMax,
+}
+
+impl AI {
+    fn get_marker(&self, marked_positions: &HashMap<Coordinates, Player>, side: &Side) -> Coordinates {
+        match self {
+            Self::Random => Self::random_mark(marked_positions, side),
+            // Self::MiniMax => Self::minimax_mark(marked_positions, side),
+            _ => panic!("AI algorithm {:?} is not implemented yet!", self),
+        }
+    }
+
+    fn random_mark(marked_positions: &HashMap<Coordinates, Player>, side: &Side) -> Coordinates {
+        let Side(side) = side;
+        let all_moves = {
+            let mut all_moves = HashSet::with_capacity(side.pow(2).into());
+            for x in 0..(*side as i16) {
+                for y in 0..(*side as i16) {
+                    all_moves.insert(Coordinates { x, y });
+                }
+            }
+            all_moves
+        };
+        let marked_positions: HashSet<Coordinates> = marked_positions.keys().cloned().collect();
+        let remaining_positions: Vec<&Coordinates> = all_moves.difference(&marked_positions)
+            .into_iter()
+            .collect();
+        let result = remaining_positions
+            .choose(&mut rand::thread_rng())
+            .unwrap();
+        *result.clone()
+    }
+
+    // fn minimax_mark(
+    //     marked_positions: &HashMap<Coordinates, Player>,
+    //     side: &Side,
+    // ) -> Coordinates {
+    //     // FIXME
+    //     Self::random_mark(marked_positions, side)
+    // }
+}
+
 struct TicTacToe {
     cursor: Coordinates,
     grid: Grid,
-    // marked_positions: Vec<Coordinates>,
+    ai_algo: AI,
     marked_positions: HashMap<Coordinates, Player>,
 }
 
@@ -139,7 +202,7 @@ impl Grid {
         }
     }
 
-    fn mark_at(&mut self, position: Coordinates, marker: char) -> io::Result<&Self> {
+    fn mark_at(&mut self, position: Coordinates, marker: char) -> crossterm::Result<&Self> {
         // fn mark(mut self, position: Coordinates, marker: char) -> Result<Self, Box<dyn Error>> {
         let Side(side) = &self.side;
         let position = {
@@ -166,7 +229,7 @@ impl Grid {
 
 impl Default for Grid {
     fn default() -> Self {
-        Self { side: Side(7) }
+        Self { side: Side(3) }
     }
 }
 
@@ -191,15 +254,16 @@ impl Direction {
 }
 
 impl TicTacToe {
-    fn from(grid: Grid) -> Self {
+    fn from(grid: Grid, ai_algo: AI) -> Self {
         let initial_grid_coords = Coordinates { x: 0, y: 0 };
         Self::move_cursor_to_grid(&initial_grid_coords);
         let Side(side) = grid.side;
-        let mut marked_positions: HashMap<Coordinates, Player> = HashMap::new();
-        marked_positions.reserve(side.pow(2).into());
+        let mut marked_positions: HashMap<Coordinates, Player> =
+            HashMap::with_capacity(side.pow(2).into());
         Self {
             cursor: initial_grid_coords,
             grid: grid,
+            ai_algo: ai_algo,
             marked_positions: marked_positions,
         }
     }
@@ -226,16 +290,37 @@ impl TicTacToe {
                     }
                     Self::move_cursor_to_grid(&grid_coords);
                     self.cursor = grid_coords;
-                },
+                }
                 InputEvent::Mark => {
-                    self.mark_cross()?;
-                    // The cursor automatically increments in x-axis after placing the mark.
-                    // Let's decrement the cursor back to bring back to its original position.
-                    Self::move_cursor_to_grid(&self.cursor);
-                },
+                    let marked = self.mark_cross();
+                    // Let's ignore if the player sets a mark at an already marked position.
+                    if marked.is_err() {
+                        continue;
+                    }
+                    let player_has_won = self.check_for_victory(&Player::Cross);
+                    if player_has_won {
+                        println!("Winner Cross");
+                        break;
+                    }
+                    let game_has_drawed = !self.grid_has_empty_boxes();
+                    if game_has_drawed {
+                        println!("Draw!");
+                        break;
+                    }
+                    let player_cursor = self.cursor;
+                    let ai_cursor = self.ai_algo.get_marker(&self.marked_positions, &self.grid.side);
+                    self.set_cursor_to_grid(&ai_cursor);
+                    self.mark_zero()?;
+                    let ai_has_won = self.check_for_victory(&Player::Zero);
+                    if ai_has_won {
+                        println!("Winner Zero");
+                        break;
+                    }
+                    self.set_cursor_to_grid(&player_cursor);
+                }
                 InputEvent::Quit => {
                     break;
-                },
+                }
             }
         }
         Ok(())
@@ -249,23 +334,31 @@ impl TicTacToe {
                     event::KeyCode::Char('w') => return Ok(InputEvent::Direction(Direction::Up)),
                     event::KeyCode::Char('s') => return Ok(InputEvent::Direction(Direction::Down)),
                     event::KeyCode::Char('a') => return Ok(InputEvent::Direction(Direction::Left)),
-                    event::KeyCode::Char('d') => return Ok(InputEvent::Direction(Direction::Right)),
+                    event::KeyCode::Char('d') => {
+                        return Ok(InputEvent::Direction(Direction::Right))
+                    }
                     event::KeyCode::Esc => return Ok(InputEvent::Quit),
-                    _ => {},
+                    _ => {}
                 };
             };
         }
     }
 
     fn handle_input_event(&mut self, event: InputEvent) {
-            // execute!(
-            //     stdout(),
-            //     cursor::MoveTo( as u16, as u16),
-            //     SetForegroundColor(Color::Red),
-            //     SetBackgroundColor(Color::White),
-            //     Print(marker),
-            //     ResetColor
-            // )?;
+        // execute!(
+        //     stdout(),
+        //     cursor::MoveTo( as u16, as u16),
+        //     SetForegroundColor(Color::Red),
+        //     SetBackgroundColor(Color::White),
+        //     Print(marker),
+        //     ResetColor
+        // )?;
+    }
+
+    fn set_cursor_to_grid(&mut self, position: &Coordinates) -> crossterm::Result<()> {
+        Self::move_cursor_to_grid(position)?;
+        self.cursor = position.clone();
+        Ok(())
     }
 
     fn move_cursor_to_grid(position: &Coordinates) -> crossterm::Result<()> {
@@ -281,26 +374,27 @@ impl TicTacToe {
         Ok(())
     }
 
-    fn mark(&mut self, player: Player) -> io::Result<&Self> {
-        self.grid.mark_at(self.cursor, player.to_char())?;
-        self.marked_positions.insert(self.cursor, player);
-        let player_has_won = self.check_for_victory(&player);
-        if player_has_won {
-            println!("Winner: {:?}", player);
+    fn mark(&mut self, player: Player) -> crossterm::Result<&Self> {
+        if self.marked_positions.get(&self.cursor).is_none() {
+            self.grid.mark_at(self.cursor, player.to_char())?;
+            self.marked_positions.insert(self.cursor, player);
+            // The cursor automatically increments in x-axis after placing the mark.
+            // Let's decrement the cursor back to bring back to its original position.
+            Self::move_cursor_to_grid(&self.cursor);
+            Ok(self)
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "the position has already been marked",
+            ))
         }
-        let game_has_drawed = !self.grid_has_empty_boxes();
-        if game_has_drawed {
-            println!("Draw!");
-        }
-
-        Ok(self)
     }
 
-    fn mark_cross(&mut self) -> io::Result<&Self> {
+    fn mark_cross(&mut self) -> crossterm::Result<&Self> {
         Ok(self.mark(Player::Cross)?)
     }
 
-    fn mark_zero(&mut self) -> io::Result<&Self> {
+    fn mark_zero(&mut self) -> crossterm::Result<&Self> {
         Ok(self.mark(Player::Zero)?)
     }
 
@@ -372,7 +466,7 @@ fn main() -> crossterm::Result<()> {
     // let two_s = time::Duration::from_secs(2);
     // thread::sleep(two_s);
     // grid.mark_cross_at(Coordinates { x: 1, y: 0 });
-    let mut game = TicTacToe::from(grid);
+    let mut game = TicTacToe::from(grid, AI::Random);
     game.handle_keyboard_input();
     Ok(())
 }
