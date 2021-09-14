@@ -3,10 +3,12 @@ use super::grid::Grid;
 use super::{Coordinates, Direction, InputEvent, Player, Side};
 
 use crossterm::event::{read, Event};
+use crossterm::style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor};
 use crossterm::{cursor, event, execute};
 use std::collections::HashMap;
 use std::io;
 use std::io::stdout;
+use std::iter;
 
 pub struct TicTacToe {
     cursor: Coordinates,
@@ -30,7 +32,7 @@ impl TicTacToe {
         })
     }
 
-    pub fn handle_keyboard_input(&mut self) -> crossterm::Result<()> {
+    pub fn game_loop(&mut self) -> crossterm::Result<()> {
         let mut event: InputEvent;
         loop {
             event = self.read_input_event()?;
@@ -49,12 +51,12 @@ impl TicTacToe {
                     }
                     let player_has_won = self.check_for_victory(&Player::Cross);
                     if player_has_won {
-                        println!("Winner Cross");
+                        self.screen_message("You've won the game!")?;
                         break;
                     }
                     let game_has_drawed = !self.grid_has_empty_boxes();
                     if game_has_drawed {
-                        println!("Draw!");
+                        self.screen_message("The game was a draw!")?;
                         break;
                     }
                     let player_cursor = self.cursor;
@@ -65,13 +67,35 @@ impl TicTacToe {
                     self.mark_zero()?;
                     let ai_has_won = self.check_for_victory(&Player::Zero);
                     if ai_has_won {
-                        println!("Winner Zero");
+                        self.screen_message("AI won the game!")?;
                         break;
                     }
                     self.set_cursor_to_grid(&player_cursor)?;
                 }
             }
         }
+        Ok(())
+    }
+
+    fn screen_message(&self, msg: &str) -> crossterm::Result<()> {
+        let Side(side) = self.grid.side;
+        // Cleanup any previous text
+        execute!(
+            stdout(),
+            cursor::MoveTo(0, side + 1),
+            SetBackgroundColor(Color::Black),
+            Print(iter::repeat(" ").take(100).collect::<String>()),
+            ResetColor
+        )?;
+        execute!(
+            stdout(),
+            cursor::MoveTo(0, side + 1),
+            SetForegroundColor(Color::Black),
+            SetBackgroundColor(Color::White),
+            Print(msg),
+            ResetColor
+        )?;
+        execute!(stdout(), cursor::MoveTo(0, side + 2),)?;
         Ok(())
     }
 
