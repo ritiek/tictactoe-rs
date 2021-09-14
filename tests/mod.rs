@@ -1,5 +1,5 @@
-mod coordinates;
-mod grid;
 mod ai;
-mod player;
+mod coordinates;
 mod game;
+mod grid;
+mod player;

@@ -9,20 +9,32 @@ fn add_operator() {
 
 #[test]
 fn direction_relative_coords_up() {
-    assert_eq!(Direction::Up.get_relative_coords(), Coordinates { x: 0, y: -1 });
+    assert_eq!(
+        Direction::Up.get_relative_coords(),
+        Coordinates { x: 0, y: -1 }
+    );
 }
 
 #[test]
 fn direction_relative_coords_down() {
-    assert_eq!(Direction::Down.get_relative_coords(), Coordinates { x: 0, y: 1 });
+    assert_eq!(
+        Direction::Down.get_relative_coords(),
+        Coordinates { x: 0, y: 1 }
+    );
 }
 
 #[test]
 fn direction_relative_coords_left() {
-    assert_eq!(Direction::Left.get_relative_coords(), Coordinates { x: -1, y: 0 });
+    assert_eq!(
+        Direction::Left.get_relative_coords(),
+        Coordinates { x: -1, y: 0 }
+    );
 }
 
 #[test]
 fn direction_relative_coords_right() {
-    assert_eq!(Direction::Right.get_relative_coords(), Coordinates { x: 1, y: 0 });
+    assert_eq!(
+        Direction::Right.get_relative_coords(),
+        Coordinates { x: 1, y: 0 }
+    );
 }

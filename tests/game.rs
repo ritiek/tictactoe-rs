@@ -1,6 +1,6 @@
-use tictactoe::{Side, Coordinates, Player, Grid, AI, TicTacToe};
 use crossterm::Result;
 use std::collections::HashMap;
+use tictactoe::{Coordinates, Grid, Player, Side, TicTacToe, AI};
 
 fn tictactoe_from_settings() -> Result<TicTacToe> {
     TicTacToe::from(Grid::from(Side(3)), AI::Random)
@@ -56,7 +56,10 @@ fn marked_positions() -> Result<()> {
         (Coordinates { x: 1, y: 1 }, Player::Cross),
         (Coordinates { x: 2, y: 0 }, Player::Zero),
         (Coordinates { x: 0, y: 0 }, Player::Cross),
-    ].iter().cloned().collect();
+    ]
+    .iter()
+    .cloned()
+    .collect();
     assert_eq!(tictactoe.marked_positions, marked_positions);
     // Move the cursor as far in the bottom right corner as possible.
     // Otherwise the terminal test output gets messed up.
