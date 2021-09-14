@@ -5,6 +5,7 @@ use crossterm::{cursor, execute, terminal};
 use std::io;
 use std::io::stdout;
 
+/// The Grid draws empty boxes and defines the layout for the game.
 #[derive(Debug)]
 pub struct Grid {
     pub side: Side,
@@ -17,6 +18,7 @@ impl Grid {
         Self { side: side }
     }
 
+    /// Draws a square grid of the specified side.
     pub fn draw(&mut self) -> crossterm::Result<&mut Self> {
         let Side(side) = self.side;
         let grid_length = side * 4 - 1;
@@ -46,6 +48,8 @@ impl Grid {
         Ok(self)
     }
 
+    /// Grid coordinates are the coordinates used to locate a box in the grid,
+    /// whereas the screen coordinates are based on the actual screen pixels.
     pub fn grid_coords_to_screen_coords(position: &Coordinates) -> Coordinates {
         Coordinates {
             x: position.x * 4 + 1,
@@ -53,8 +57,8 @@ impl Grid {
         }
     }
 
+    /// Draw a character marker at some specific grid coordinates.
     pub fn mark_at(&mut self, position: Coordinates, marker: char) -> crossterm::Result<&Self> {
-        // fn mark(mut self, position: Coordinates, marker: char) -> Result<Self, Box<dyn Error>> {
         let Side(side) = &self.side;
         let _position = {
             if side >= &(position.x as u16) && side >= &(position.y as u16) {
@@ -66,7 +70,6 @@ impl Grid {
                 ))
             }
         }?;
-        // Self::move_cursor_to_grid(&position);
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -75,11 +78,5 @@ impl Grid {
             ResetColor
         )?;
         Ok(self)
-    }
-}
-
-impl Default for Grid {
-    fn default() -> Self {
-        Self::from(Side(3))
     }
 }

@@ -67,7 +67,14 @@ impl Direction {
             Direction::Down => Coordinates { x: 0, y: 1 },
             Direction::Left => Coordinates { x: -1, y: 0 },
             Direction::Right => Coordinates { x: 1, y: 0 },
-            _ => panic!("diagonal movement is not yet implemented!"),
+            // _ => panic!("diagonal movement is not yet implemented!"),
         }
+    }
+}
+
+impl Default for Grid {
+    /// The general game of TicTacToe has a square grid of length 3.
+    fn default() -> Self {
+        Self::from(Side(3))
     }
 }

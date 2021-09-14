@@ -32,6 +32,7 @@ impl TicTacToe {
         })
     }
 
+    /// The game loop reads player input and performs actions based on this input.
     pub fn game_loop(&mut self) -> crossterm::Result<()> {
         let mut event: InputEvent;
         loop {
@@ -95,10 +96,14 @@ impl TicTacToe {
             Print(msg),
             ResetColor
         )?;
-        execute!(stdout(), cursor::MoveTo(0, side + 2),)?;
+        // Good idea to move the cursor on to the next line since it seems
+        // terminals in raw mode do not put an empty line at the end of STDOUT
+        // by themselves.
+        execute!(stdout(), cursor::MoveTo(0, side + 2))?;
         Ok(())
     }
 
+    /// Performs movement in the grid.
     fn handle_direction(&mut self, direction: Direction) -> crossterm::Result<()> {
         let Side(side) = &self.grid.side;
         let mut grid_coords = self.cursor + direction.get_relative_coords();
@@ -119,6 +124,7 @@ impl TicTacToe {
         Ok(())
     }
 
+    /// Read and translate keyboard input to an `InputEvent`.
     fn read_input_event(&self) -> crossterm::Result<InputEvent> {
         loop {
             if let Event::Key(k) = read()? {
@@ -137,17 +143,20 @@ impl TicTacToe {
         }
     }
 
+    /// Moves and places the cursor on the specified coordinates.
     fn set_cursor_to_grid(&mut self, position: &Coordinates) -> crossterm::Result<()> {
         Self::move_cursor_to_grid(position)?;
         self.cursor = position.clone();
         Ok(())
     }
 
+    /// Moves the cursor on the specified grid coordinates visually.
     fn move_cursor_to_grid(position: &Coordinates) -> crossterm::Result<()> {
         let screen_coords = Grid::grid_coords_to_screen_coords(position);
         Ok(Self::move_cursor_to_screen(&screen_coords)?)
     }
 
+    /// Moves the cursor on the specified screen coordinates visually.
     fn move_cursor_to_screen(position: &Coordinates) -> crossterm::Result<()> {
         execute!(
             stdout(),
@@ -156,12 +165,13 @@ impl TicTacToe {
         Ok(())
     }
 
+    /// Place a character mark on the current position of the cursor.
     fn mark(&mut self, player: Player) -> crossterm::Result<&Self> {
         if self.marked_positions.get(&self.cursor).is_none() {
             self.grid.mark_at(self.cursor, player.to_char())?;
             self.marked_positions.insert(self.cursor, player);
             // The cursor automatically increments in x-axis after placing the mark.
-            // Let's decrement the cursor back to bring back to its original position.
+            // Let's bring it back to its original position.
             Self::move_cursor_to_grid(&self.cursor)?;
             Ok(self)
         } else {
