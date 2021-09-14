@@ -10,11 +10,12 @@ use std::io;
 use std::io::stdout;
 use std::iter;
 
+#[derive(Debug, PartialEq)]
 pub struct TicTacToe {
-    cursor: Coordinates,
-    grid: Grid,
-    ai_algo: AI,
-    marked_positions: HashMap<Coordinates, Player>,
+    pub cursor: Coordinates,
+    pub grid: Grid,
+    pub ai_algo: AI,
+    pub marked_positions: HashMap<Coordinates, Player>,
 }
 
 impl TicTacToe {
@@ -78,7 +79,7 @@ impl TicTacToe {
         Ok(())
     }
 
-    fn screen_message(&self, msg: &str) -> crossterm::Result<()> {
+    pub fn screen_message(&self, msg: &str) -> crossterm::Result<()> {
         let Side(side) = self.grid.side;
         // Cleanup any previous text
         execute!(
@@ -144,20 +145,20 @@ impl TicTacToe {
     }
 
     /// Moves and places the cursor on the specified coordinates.
-    fn set_cursor_to_grid(&mut self, position: &Coordinates) -> crossterm::Result<()> {
+    pub fn set_cursor_to_grid(&mut self, position: &Coordinates) -> crossterm::Result<()> {
         Self::move_cursor_to_grid(position)?;
         self.cursor = position.clone();
         Ok(())
     }
 
     /// Moves the cursor on the specified grid coordinates visually.
-    fn move_cursor_to_grid(position: &Coordinates) -> crossterm::Result<()> {
+    pub fn move_cursor_to_grid(position: &Coordinates) -> crossterm::Result<()> {
         let screen_coords = Grid::grid_coords_to_screen_coords(position);
         Ok(Self::move_cursor_to_screen(&screen_coords)?)
     }
 
     /// Moves the cursor on the specified screen coordinates visually.
-    fn move_cursor_to_screen(position: &Coordinates) -> crossterm::Result<()> {
+    pub fn move_cursor_to_screen(position: &Coordinates) -> crossterm::Result<()> {
         execute!(
             stdout(),
             cursor::MoveTo(position.x as u16, position.y as u16)
@@ -182,20 +183,20 @@ impl TicTacToe {
         }
     }
 
-    fn mark_cross(&mut self) -> crossterm::Result<&Self> {
+    pub fn mark_cross(&mut self) -> crossterm::Result<&Self> {
         Ok(self.mark(Player::Cross)?)
     }
 
-    fn mark_zero(&mut self) -> crossterm::Result<&Self> {
+    pub fn mark_zero(&mut self) -> crossterm::Result<&Self> {
         Ok(self.mark(Player::Zero)?)
     }
 
-    fn grid_has_empty_boxes(&self) -> bool {
+    pub fn grid_has_empty_boxes(&self) -> bool {
         let Side(side) = self.grid.side;
         self.marked_positions.len() != side.pow(2).into()
     }
 
-    fn check_for_victory(&self, player: &Player) -> bool {
+    pub fn check_for_victory(&self, player: &Player) -> bool {
         let Side(side) = self.grid.side;
         let mut victory = true;
 

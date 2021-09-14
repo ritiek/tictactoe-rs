@@ -8,7 +8,7 @@ pub use grid::Grid;
 
 use std::ops::Add;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Side(pub u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,13 +43,14 @@ impl Player {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum InputEvent {
     Direction(Direction),
     Mark,
     Quit,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 // Marked this as non-exhaustive because it's possible to have variants for diagonal
 // movements.
 #[non_exhaustive]

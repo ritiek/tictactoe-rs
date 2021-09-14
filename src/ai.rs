@@ -3,7 +3,7 @@ use super::{Coordinates, Player, Side};
 use rand::seq::SliceRandom;
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum AI {
     Random,

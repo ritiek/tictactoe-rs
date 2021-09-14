@@ -6,25 +6,33 @@ use std::io;
 use std::io::stdout;
 
 /// The Grid draws empty boxes and defines the layout for the game.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Grid {
     pub side: Side,
 }
 
 impl Grid {
     pub fn from(side: Side) -> Self {
-        terminal::enable_raw_mode().unwrap();
-        execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         Self { side: side }
+    }
+
+    /// Removes already existing text on the terminal.
+    fn cleanup() -> crossterm::Result<()> {
+        terminal::enable_raw_mode().unwrap();
+        execute!(stdout(), terminal::Clear(terminal::ClearType::All))?;
+        Ok(())
     }
 
     /// Draws a square grid of the specified side.
     pub fn draw(&mut self) -> crossterm::Result<&mut Self> {
+        Self::cleanup()?;
+
         let Side(side) = self.side;
         let grid_length = side * 4 - 1;
         let grid_background = std::iter::repeat(" ")
             .take(grid_length.into())
             .collect::<String>();
+
         for y in 0..side {
             execute!(
                 stdout(),
