@@ -20,3 +20,9 @@ $ cargo run --release
 in the grid.
 - <kbd>Enter</kbd> to put your marker.
 - <kbd>Esc</kbd> to leave the game.
+
+## Running tests
+
+```
+$ cargo test
+```
